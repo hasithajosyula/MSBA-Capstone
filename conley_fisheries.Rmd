@@ -1,0 +1,120 @@
+---
+title: "Conley fisheries Case"
+author: "Hasitha Josyula"
+output: 
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+```
+
+## Load packages and create empty data frame
+
+```{r}
+# Load packages
+library(tidyverse) 
+
+# Define n
+n <- 1000
+
+# Empty data frame for 1000 simulated days
+data <- data.frame(day = seq(1:n),
+                demand = NA, # demand in Rockport
+                quantity = NA, # quantity sold
+                price = NA, # price per pound
+                cost = 10000, # cost of daily operations
+                earnings = NA)
+
+head(data)
+
+```
+
+
+```{r}
+set.seed(123)
+rnorm(1000) %>% mean()
+rnorm(1000) %>% mean()
+
+```
+
+The means of the two samples are different (.016 vs. .042) because R has incremented the seed for the second sample. 
+
+Compare to:
+
+```{r}
+set.seed(123)
+rnorm(1000) %>% mean()
+
+set.seed(123)
+rnorm(1000) %>% mean()
+
+```
+
+3. Mr. Conley has 50 boats, but we will be modeling earnings per boat.  (It would be simple enough to multiply your per boat results by 50 to get earnings for the fleet.)
+
+```{r}
+n <- 1000
+
+set.seed(123)
+
+data <- data %>% mutate(price = rnorm(n,mean=3.65,sd=0.2),
+                        demand = sample(x=c(0,1000,2000,3000,4000,5000,6000),
+                                      size=n,
+                                      replace=T,
+                                      prob=c(0.02,0.03,0.05,0.08,0.33,0.29,0.2)),
+                quantity = ifelse(demand>=3500,3500,demand),
+                cost = 10000, 
+                earnings = price*quantity-10000)
+
+head(data)
+```
+
+
+### Q1
+
+Plot simulated earnings.
+
+```{r}
+ggplot(data, aes(earnings))+geom_density()+geom_vline(xintercept=1375)+labs(title = "Density plot of Earnings")
+ggplot(data,aes(earnings))+geom_vline(xintercept=1374)+stat_ecdf(geom="step")
+```
+
+### Q2
+
+What is P(F > 1375)?
+
+```{r}
+mean(data$earnings > 1375)
+```
+
+> From the above results calculated, we can determine that the probability of making earnings more than $1375 is around 82.7% at the Rockport.
+
+### Q3
+
+What is P(F < 0)
+
+```{r}
+mean(data$earnings < 0)
+```
+
+> From the above results calculated, we can determine that the probability of making losses at the Rockport is around 11%.
+
+
+### Q4
+
+What is the expected value (mean) of F?
+
+```{r}
+mean(data$earnings)
+```
+
+> From the above results, the average earnings will be $1829.874 which is higher than $1375.
+
+### Q5
+
+What is your advice to Mr. Conley?  Write one paragraph in which you argue a position. In your answer please incorporate the quantitative details from your simulation, and consider in particular the trade-off between risk and reward.
+
+> From the quantitative simulations performed above, we can determine that the probablity of earnings is more at Rockport which is more than $1375. There is a profit of around 82% per boat if he sells at Rockport. Also, we saw that there is a little risk of making loss at the Rockport i.e.around 11%. Even though, there's a small percentage of risk involved when choosing Rockport to sell, he can make an average of $1829.874 per boat at the Rockport which is $454.874 more than what he can make at Gloucester which is only $1375. So my advice to Conley is to sell at Rockport since would be worth the risk.

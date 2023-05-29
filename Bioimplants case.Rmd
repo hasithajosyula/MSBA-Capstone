@@ -1,0 +1,124 @@
+---
+title: "Bioimplants case "
+author: "Hasitha Josyula"
+output: 
+  html_document:
+    toc: true
+---
+
+## What is the attrition rate for employees at BI? (A rate, remember, is expressed as a proportion.)
+## 1.Calculate overall attrition rate.
+## 2.Create a summary table of conditional attrition rates by department and job role.
+
+```{r}
+library(tidyverse)
+d <- read_csv("bioimplants.csv")
+
+attrition<- ifelse(d$attrition == "Yes", 1, 0)
+overall_attrition_rate <- mean(attrition)
+overall_attrition_rate
+
+
+d %>% 
+  group_by(department, job_role) %>% 
+    summarize(conditional_attrition_rate= mean(attrition=='Yes')) %>% 
+  arrange(desc(conditional_attrition_rate))
+
+d %>% 
+    summarize(overall_attrition_rate= mean(attrition=='No'))
+```
+
+> From the analysis performed above, the overall attrition rate is 16% and the higest attrition rate is observed in Sales department for the Sales Representatives. Also, the majority class in attrition is ‘NO’. If we had always predicted NO, we would be over 83.8 percent correct. We can certainly improve our performance with a complex logistic regression model.
+
+## Fit a logistic regression model of attrition using all the predictors.
+Report accuracy for this model with a decision threshold of .5. (Accuracy is defined as the proportion of correct predictions.)
+Comment on whether the model offers an improvement over predicting with the majority class.
+
+```{r}
+
+dBI<-d%>%select(-employee_number)
+logistic_model <- glm(ifelse(attrition=="Yes", 1, 0) ~.,data = dBI, 
+                    family = 'binomial')
+
+summary(logistic_model)
+
+accuracy_logistic_model<-(ifelse(predict(logistic_model, type = "response") > .5, "Yes", "No") == d$attrition) %>%mean 
+accuracy_logistic_model
+```
+
+> By comparing the values of logistic regression model and majority model, we can say that the logistic regression model shows better results. From the above results, the accuracy of logistic regression model is 0.892517 where as the accuracy of majority model is 0.8387755. Clearly, we can say that logistic regression model gives better results.
+
+## 
+The upside of standardizing inputs by centering and scaling is that it allows you to compare coefficient effect sizes easily—they are all on the same scale. (The downside is that they are no longer scaled in the original units, and interpretation changes.) Even though the coefficients are expressed in log odds in this case, after standardization they can still be compared for effect sizes on a relative basis.
+
+There are a lot of coefficients to type into the model formula. A shortcut to automatically include all the predictors in the dataset is ., as in: glm(target ~ ., family = binomial, data = ...). However, this shortcut doesn’t allow you to standardize also. The easiest solution to create a new dataset in which all the continuous variables are centered. For this a version of mutate() is useful: mutate_if(). The code would go like this:
+
+data %>%    mutate_if(is.numeric, scale)
+
+In English: if the variable is numeric, then scale it.
+
+Notice that some of the standard errors and coefficients in the model above have exploded. (You can see this more easily if you adjust the number of digits printed in the output with options(scipen = 3).) The SEs for some of the department and job_role coefficients are over 380. Why has this happened? Multicolinearity! Some of the levels of the department variable are correlated with levels in job_role. For example, since most of the people in the Human Resources department also have a job title of Human Resources, the information from department is redundant: by definition, if we know job_role we also know department and vice versa. This is a textbook example of how multicollinearity makes inference difficult—we can’t compare the coefficients because some of them are wacky. The solution? Remove the redundant variable. Refit the model without department
+
+## Which of the centered and scaled predictors has the largest effect size?
+
+Interpret the coefficient with the largest effect size. Since you are working with standardized coefficients, the interpretation for continuous predictors will be: a 1 unit (that is, after scaling, a 1 standard deviation) increase in x is associated with a coefficient-sized change in the log odds of y, on average, while holding the other predictors constant. The coefficient represents the change in the log odds of the outcome associated with an increase from the reference level in the categorical variable.
+
+```{r}
+
+
+d_scaled <- d %>% 
+  mutate_if(is.numeric, function(x) scale(x) %>% as.vector)
+
+(scaled_model <- glm(ifelse(attrition=="Yes", 1, 0) ~.-employee_number, 
+                    data = d_scaled, 
+                    family = binomial))
+
+
+d_scaled <- d %>% 
+  mutate_if(is.numeric, function(x) scale(x) %>% as.vector)
+
+(scaled_model <- glm(ifelse(attrition=="Yes", 1, 0) ~.-employee_number-department, 
+                    data = d_scaled, 
+                    family = binomial))
+
+summary(scaled_model)
+```
+
+> From the above results, the predictors having the largest effect size are over_time and job_role- Research Director.The centered and Scaled predictors that has the largest effect size are business_travel,job_role,marital_status and over_time. 
+1)The variable business_travel has a positive relationship with attrition business_travelTravel_Frequently 1.916549 and
+business_travelTravel_Rarely 1.029756 
+2)The variable job_role has both postive and negative relationship for different job roles with attrition - job_roleHuman Resources 1.300441
+job_roleLaboratory Technician 1.482158
+job_roleResearch Director -1.030455
+job_roleSales Executive 1.018424
+job_roleSales Representative 1.956923 
+3)The variable Marital_status has the positive relationship with attrition - marital_statusSingle 1.144697 and marital_statusMarried 0.318912 
+4)The variable over_time has the positive relationship with attrition over_timeYes 1.973530.
+Clearly over_time has the highest effect on the attrition rate. When over_time is Yes, one standard deviation increase in “Yes” in over_time increases attrition by log odds of attrition.
+
+
+## Based on the above logistic regression model (and, specifically, on the coefficient with the largest effect size that you identified above), how might company policy be changed to reduce employee attrition?
+
+Describe your proposed policy change.
+
+Estimate and explain the change in churn probability associated with that policy change.
+
+```{r}
+
+predict(logistic_model, type = "response") %>% mean
+
+predict(logistic_model, newdata = mutate(d, over_time = 'No'), type = "response") %>% mean
+
+predict(logistic_model, newdata = mutate(d, business_travel = 'Non-Travel'), type = "response") %>% mean
+
+predict(logistic_model, newdata = mutate(d, education_field = 'Medical'), type = "response") %>% mean
+
+predict(logistic_model, newdata = mutate(d, marital_status = 'Married'), type = "response") %>% mean
+```
+
+> From the analysis performed above, we could see that the model predicted approximately has 16% of attrition rate. When we manipulated the data such that there is no employee doing over_time, we could see that the attrition rate decreased greatly to to 5.86 (0.1612245 - 0.1026007 = 0.0586238) which is approximately 6% only. Accordindly, the probabilties of attrition has also changed as shown above when considered other variables such as business travel as “Non-Travel”, education_field as “medical”, marital_status as “Married”. So, we can suggest the leadership across the company to not have employees work over time and make few positive changes to other variables mentioned above.
+
+## What should Angelica say in her report? 
+
+> From the analysis performed above, the company faces a 16% attrition rate. A large percent affecting the attrition rate is observed in employees working in sales representative role of sales department. The overall attrition rate of the company before modeling is 0.1612245. Overtime is the highest affecting factor in the attrition rate. This indicates that employees who work over time are likely to drift away from the company. The accuracy of the model after fitting the logistic model is 0.892517 indicating good model and yields better performance when compared to the accuracy of the majority class i.e., 0.1612245. When we tried to model the data by removing the over time, the attrition rate has greatly reduced to approximately 6%. Accordindly, the probabilties of attrition has also changed as shown in Q3 output when considered other variables such as business travel as “Non-Travel”, education_field as “medical”, marital_status as “Married”. So, Angelica can suggest implementing or adapting new policies where the employees is not working over time which helps improve job satisfaction and environment around them. Along with that, she can also suggest the leadership across the company to make few positive changes to other variables mentioned above such as Business_travel, education_field and marital_status. By making the changes mentioned above will help the company to greatly reduce the attrition rate.
+

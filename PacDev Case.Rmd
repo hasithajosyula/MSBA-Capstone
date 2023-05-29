@@ -1,0 +1,95 @@
+---
+title: "PacDev Case"
+author: "Hasitha Josyula"
+output: 
+  html_document:
+    toc: true
+---
+
+
+## Q1
+
+```{r}
+
+library(tidyverse)
+
+d <- read_csv("pacdev_data.csv")
+
+#1.Plot price against sqft with a summary linear regression line.
+
+ggplot(d, aes(sqft, price)) +geom_point() +theme_minimal() +stat_smooth(method="lm", se = F) +labs(title = "price ~ sqft")
+
+#2.Determine the equation of the summary line in the plot (by fitting the corresponding regression model) and interpret the coefficients for the intercept and sqft in the equation.
+linear_model <- lm(price ~ sqft, data = d)
+linear_model %>% summary
+
+```
+> From the above plot & analysis, the equation is price = (40623.019 + 269.345*sqft). We can say observe that there is a positive correlation between price and sqft i.e., as the sqft increases the price also increases.
+
+
+## Q2
+
+```{r}
+#1.Fit a multiple regression model of price with all the available predictors entered additively (+). However, create a centered version of sqft (by subtracting the mean from each observation) and use this as a predictor rather than the original variable. (There should be 8 coefficients in this model.)
+
+centeredsqft <- d$sqft - mean(d$sqft)
+
+regressionmodel_nonint <- lm(price ~ centeredsqft + city + pool + garage + bed + bath, data=d)
+regressionmodel_nonint %>% summary
+```
+>#2.Interpret the 4 coefficients for the intercept, centered sqft, and city. Remember that Long Beach is the (missing) reference city in the model, assuming that factor levels have been assigned alphabetically.
+price = 528103.213+271.561 * centeredsqft +190239.704 * citySantaMonica +88020.719 * cityWestwood +10124.630 * poolyes -14195.911 * garageyes + 41.553 * bed -3092.909 * bath
+
+> From the above analysis, the intercept is positive which is 528103.213 and slope for centeredsqft is 271.561. The slopes for city Santa Monica and cityWestwood are 190239.704 & 88020.719 respectively. Since the slopes are postive, we can say that the price increases with one unit change in variables. Among all the cities, SantaMonica has the highest slope value.
+
+## Q3
+
+```{r}
+#1.To the above model add an interaction between centered sqft and city. This means that you combine these terms multiplicatively (*) rather than additively (+).
+interaction_model <- lm(price ~ centeredsqft * city + pool + garage + bed + bath, data=d)
+interaction_model %>% summary
+
+#2.Create a visualization of this interaction model, making sure to use centered sqft in the plot.
+ggplot(d, aes(centeredsqft, price, col=city)) +geom_point() +theme_minimal() +stat_smooth(method="lm", se = F) +labs(title = "price ~ centeredsqft")
+  
+```
+>#3.Interpret 6 coefficients from this model: the intercept, the main effects for centered sqft and city, and the interaction effects.
+>From the plot and analysis, we can say observe that the intercept for this interaction model is positive i.e., 527445.45. 
+The Main effects:
+* Slope for centeredsqft is 240.63.
+* Slope for cities citySanta Monica & cityWestwood are 189904.29 and 88037.11 respectively. For both the cities, the slopes are positive which indicates that the price will increase with one unit change in variables.
+Interaction effects:
+* The centeredsqft for cities citySanta Monica & cityWestwood are 90.09 & 37.95. We can see that they are positive, indicating there is a price increase with interactions. Also, among all the cities, the city Santa Monica has the interaction effect.
+
+## Q4
+
+```{r}
+#Is this a good model? To assess model fit create three plots:
+
+#1.A residual plot with model residuals on the vertical axis and the fitted values on the horizontal axis. Add a summary line.
+d %>% mutate(fitted = fitted(interaction_model),
+  residuals = fitted - price) %>% 
+  ggplot(aes(fitted, residuals)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F, col = "red") +
+  labs(title = "residuals for the interaction model")
+
+#2.A plot of the model’s fitted values (again on the horizontal axis) against observed values of price. Add a summary line.
+ggplot(d, aes(fitted(interaction_model), price)) +geom_point() +theme_minimal() +stat_smooth(method="lm", se = F) +labs(title = "price ~ fittedvalues")
+
+#3.A histogram of the residuals.
+ggplot(d, aes(resid(interaction_model))) + geom_histogram()
+
+```
+> From the above plot & analysis, the model is good for below reasons:
+1. In the the residual plot, we can observe that the points are scattered around residual = 0 line indicating there are no patterns in this plot, meaning it is a good model. 
+2. From the fitted values model, we can see that the data is linear with a line which meets the condition of a good model.
+3. From the histrogram plot, we can observe that the plot is symmetrically bell shaped around zero satisfying the variance is normally disturbed which meets the condition for a good model.
+
+## Q5
+
+```{r}
+#From the analysis done above, Andrew should recommend Santa Monica city as first choice over Long Beach and Westwood since it has high home price effect with addition of sqft. From the analysis, we can observe that, Santa Monica city has stronger interaction effect with a positive slope of 90.09 which is three times of Westwood slope(37.95). Santa Monica has higher interaction rate followed by Westwood and Longbeach respectively. Also, he should recommend to use interaction model over other models since this model will give a better and increased adjusted R2 value which is 0.31 and decreased residual standard error i.e., 194500. When using non-interaction model, the adjusted R2 and Residual standard error are 0.30 and 195000 respectively. For linear regression model, the adjusted R2 and Residual standard error are 0.19 and 210300 respectively. So, from the above, we can say that Andrew should recommend the interaction model since it has low residual standard error and high adjusted R2 value which satisfies the conditions for a good model. So, Santa Monica city is good choice to go for when adding the sqft and Andrew should recommend the same. 
+```
+
+
